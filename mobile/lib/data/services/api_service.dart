@@ -125,4 +125,16 @@ class ApiService {
       }),
     );
   }
+
+  static Future<bool> cancelBooking(String bookingId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/bookings/action'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'booking_id': bookingId,
+        'action': 'cancel',
+      }),
+    );
+    return response.statusCode == 200;
+  }
 }

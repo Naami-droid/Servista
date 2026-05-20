@@ -25,7 +25,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       final role = _isProvider ? "provider" : "customer";
-      final result = await ApiService.login(email, password, role);
+      await ApiService.login(email, password, role);
       
       if (!mounted) return;
       
@@ -133,7 +133,7 @@ class _AuthScreenState extends State<AuthScreen> {
               SwitchListTile(
                 title: const Text("Login as Service Provider"),
                 value: _isProvider,
-                activeColor: const Color(0xFF1a56db),
+                activeThumbColor: const Color(0xFF1a56db),
                 onChanged: (val) {
                   setState(() {
                     _isProvider = val;

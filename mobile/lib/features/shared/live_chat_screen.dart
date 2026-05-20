@@ -179,7 +179,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: widget.userRole == 'provider' ? Colors.deepPurple : Colors.blueAccent,
+                  backgroundColor: const Color(0xFF1a56db),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
                     onPressed: _sendMessage,

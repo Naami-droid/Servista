@@ -95,34 +95,33 @@ async def provider_action(payload: BookingAction):
         raise HTTPException(status_code=404, detail="Booking not found")
         
     booking_data = doc.to_dict()
-    if booking_data["status"] != "PENDING":
-        return {"status": "error", "message": "Booking is no longer pending"}
-        
-    if payload.action == "accept":
+    current_status = booking_data.get("status", "")
+    
+    # Allow actions based on current status
+    if payload.action == "accept" and current_status == "PENDING":
         doc_ref.update({
             "status": "CONFIRMED",
-            "confirmed_provider_id": "current_provider_id_mock", # In real app, grab from auth token
+            "confirmed_provider_id": "current_provider_id_mock",
             "updated_at": datetime.now(timezone.utc)
         })
-        # Schedule 1-hour reminder
         try:
             appt_time = datetime.now(timezone.utc) + timedelta(hours=2)
             await schedule_appointment_reminder(payload.booking_id, appt_time)
         except Exception as e:
             print(f"Failed to schedule reminder: {e}")
-            
         return {"status": "success", "message": "Booking confirmed! Customer notified."}
 
-    elif payload.action == "renegotiate":
+    elif payload.action == "renegotiate" and current_status == "PENDING":
         doc_ref.update({
             "status": "RENEGOTIATING",
             "updated_at": datetime.now(timezone.utc)
         })
         return {"status": "success", "message": "Booking renegotiating"}
         
-    elif payload.action == "complete":
+    elif payload.action == "complete" and current_status == "CONFIRMED":
         doc_ref.update({
             "status": "COMPLETED",
+            "completed_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc)
         })
         return {"status": "success", "message": "Service marked as completed."}
@@ -130,8 +129,17 @@ async def provider_action(payload: BookingAction):
     elif payload.action == "reject":
         doc_ref.update({
             "status": "REJECTED",
+            "cancelled_by": "provider",
             "updated_at": datetime.now(timezone.utc)
         })
-        return {"status": "success", "message": "Booking rejected. Customer notified to search again."}
+        return {"status": "success", "message": "Booking rejected."}
+
+    elif payload.action == "cancel":
+        doc_ref.update({
+            "status": "CANCELLED",
+            "cancelled_by": "customer",
+            "updated_at": datetime.now(timezone.utc)
+        })
+        return {"status": "success", "message": "Booking cancelled by customer."}
     
-    raise HTTPException(status_code=400, detail="Invalid action")
+    raise HTTPException(status_code=400, detail=f"Invalid action '{payload.action}' for status '{current_status}'")
