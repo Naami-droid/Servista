@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../data/services/api_service.dart';
+import '../../data/services/notification_service.dart';
 import '../shared/live_chat_screen.dart';
 
 class ProviderDashboard extends StatefulWidget {
@@ -22,6 +23,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   void initState() {
     super.initState();
     _fetchJobs();
+    NotificationService().init();
     // Poll every 5 seconds for incoming jobs
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchJobs());
   }
@@ -53,6 +55,15 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Successfully ${action}ed job!')),
         );
+        
+        if (action == "accept") {
+          // Schedule provider-side alarm 1 hour before
+          _scheduleMeetingAlarmForProvider(bookingId);
+        } else if (action == "reject") {
+          // Cancel scheduled alarms
+          NotificationService().cancelForBooking(bookingId);
+        }
+
         _fetchJobs();
       }
     } catch (e) {
@@ -60,6 +71,25 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
         SnackBar(content: Text('Error: $e')),
       );
     }
+  }
+
+  void _scheduleMeetingAlarmForProvider(String bookingId) {
+    DateTime meetingTime = DateTime.now().add(const Duration(hours: 2));
+    
+    NotificationService().addImmediate(
+      title: "New Confirmed Appointment 📅",
+      body: "Job scheduled at ${meetingTime.hour}:${meetingTime.minute.toString().padLeft(2, '0')}.",
+      bookingId: bookingId,
+      type: NotificationType.confirmed,
+    );
+
+    final alarmTime = meetingTime.subtract(const Duration(hours: 1));
+    NotificationService().schedule(
+      title: "⏰ Meeting reminder alarm",
+      body: "You have a job starting in 1 hour.",
+      fireAt: alarmTime,
+      bookingId: bookingId,
+    );
   }
 
   void _showNotifications() {
@@ -70,55 +100,77 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        final notifications = _pendingJobs.where((j) => j['status'] == 'PENDING').toList();
-        return Container(
-          height: MediaQuery.of(ctx).size.height * 0.5,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        final notifications = NotificationService().history;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.5,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Notifications", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFF1a56db), borderRadius: BorderRadius.circular(12)),
-                    child: Text("${notifications.length}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Center(
+                    child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Meeting Alarms History", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      if (notifications.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              NotificationService().markAllRead();
+                            });
+                            setSheetState(() {});
+                          },
+                          child: const Text("Clear All"),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: notifications.isEmpty
+                      ? const Center(child: Text("No notification alarms scheduled yet.", style: TextStyle(color: Colors.grey)))
+                      : ListView.builder(
+                          itemCount: notifications.length,
+                          itemBuilder: (_, i) {
+                            final n = notifications[i];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: n.color.withValues(alpha: 0.1),
+                                  child: Icon(n.icon, color: n.color),
+                                ),
+                                title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(n.body),
+                                    const SizedBox(height: 4),
+                                    Text("${n.time.hour}:${n.time.minute.toString().padLeft(2, '0')}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                  ],
+                                ),
+                                trailing: n.bookingId != null
+                                  ? TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        _confirmCancel(n.bookingId!);
+                                      },
+                                      child: const Text("Cancel Job", style: TextStyle(color: Colors.red)),
+                                    )
+                                  : null,
+                              ),
+                            );
+                          },
+                        ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: notifications.isEmpty
-                  ? const Center(child: Text("No new notifications", style: TextStyle(color: Colors.grey)))
-                  : ListView.builder(
-                      itemCount: notifications.length,
-                      itemBuilder: (_, i) {
-                        final job = notifications[i];
-                        final req = job['request_data'] ?? {};
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0xFF1a56db),
-                              child: Icon(Icons.work, color: Colors.white),
-                            ),
-                            title: Text(req['service_type'] ?? 'New Request', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text("📍 ${req['location'] ?? 'N/A'} · ${req['date'] ?? ''} ${req['time_preference'] ?? ''}"),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.pop(ctx),
-                          ),
-                        );
-                      },
-                    ),
-              ),
-            ],
-          ),
+            );
+          }
         );
       },
     );
@@ -147,7 +199,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingCount = _pendingJobs.where((j) => j['status'] == 'PENDING').length;
+    final alarmCount = NotificationService().unreadCount;
 
     return Scaffold(
       appBar: AppBar(
@@ -178,13 +230,13 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 icon: const Icon(Icons.notifications_outlined, color: Color(0xFF1a56db)),
                 onPressed: _showNotifications,
               ),
-              if (pendingCount > 0)
+              if (alarmCount > 0)
                 Positioned(
                   right: 6, top: 6,
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                    child: Text("$pendingCount", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: Text("$alarmCount", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
                 ),
             ],
@@ -431,6 +483,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                                               backgroundColor: Colors.green,
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              elevation: 0,
                                             ),
                                           ),
                                         ),

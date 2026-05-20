@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../data/services/api_service.dart';
+import '../../data/services/notification_service.dart';
 import '../shared/reasoning_panel.dart';
 import '../shared/live_chat_screen.dart';
 
@@ -19,15 +21,42 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _isListening = false;
 
+  // Real Speech To Text
+  late stt.SpeechToText _speech;
+  bool _speechAvailable = false;
+
   Map<String, dynamic>? _currentParsedRequest;
   BookingReasoning? _currentReasoning;
   List<dynamic>? _pendingProviders;
 
   // Booking State
-  // Timer deadline tracked via _bookingStatus lifecycle
   String? _pendingBookingId;
   Timer? _statusPoller;
   String _bookingStatus = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    _initSpeech();
+    NotificationService().init();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      bool available = await _speech.initialize(
+        onStatus: (status) => print('Speech status: $status'),
+        onError: (error) => print('Speech error: $error'),
+      );
+      if (mounted) {
+        setState(() {
+          _speechAvailable = available;
+        });
+      }
+    } catch (e) {
+      print("Speech initialization failed: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -36,22 +65,44 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  // ─── Voice Simulation ───────────────────────────────────
-  void _toggleVoice() {
-    setState(() => _isListening = !_isListening);
+  // ─── Voice Recording ─────────────────────────────────────
+  void _toggleVoice() async {
+    if (!_speechAvailable) {
+      // Fallback simulation if mic is unavailable
+      setState(() => _isListening = !_isListening);
+      if (_isListening) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              _isListening = false;
+              _controller.text = "Mujhe kal subah G-13 mein AC technician chahiye";
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("🎤 Voice recognized (Demo Mode)!"), duration: Duration(seconds: 1)),
+            );
+          }
+        });
+      }
+      return;
+    }
+
     if (_isListening) {
-      // Simulate recording for 2 seconds, then fill text
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() {
-            _isListening = false;
-            _controller.text = "Mujhe kal subah G-13 mein AC technician chahiye";
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("🎤 Voice recognized!"), duration: Duration(seconds: 1)),
-          );
-        }
-      });
+      setState(() => _isListening = false);
+      _speech.stop();
+    } else {
+      setState(() => _isListening = true);
+      await _speech.listen(
+        onResult: (val) {
+          if (mounted) {
+            setState(() {
+              _controller.text = val.recognizedWords;
+              if (val.finalResult) {
+                _isListening = false;
+              }
+            });
+          }
+        },
+      );
     }
   }
 
@@ -81,7 +132,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _bookingStatus = "";
     });
 
-    // Add AI thinking indicator
     setState(() {
       _messages.insert(0, {'isThinking': true, 'isUser': false});
     });
@@ -89,7 +139,6 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final response = await ApiService.sendChatMessage("user_123", text, history: historyToSend);
 
-      // Remove thinking indicator
       setState(() {
         _messages.removeWhere((m) => m.containsKey('isThinking'));
       });
@@ -98,8 +147,6 @@ class _ChatScreenState extends State<ChatScreen> {
         final reasoningData = response['reasoning'];
         if (reasoningData != null && reasoningData['recommended_two'] != null) {
           final recs = reasoningData['recommended_two'];
-
-          // Add AI reasoning steps as separate chat bubbles
           final parsedReq = response['parsed_request'];
           setState(() {
             _messages.insert(0, {
@@ -178,10 +225,9 @@ class _ChatScreenState extends State<ChatScreen> {
         _pendingBookingId = res['booking_id'];
         _pendingProviders = null;
         _bookingStatus = "PENDING";
-        _messages.insert(0, {'text': "📩 Request sent! Waiting for provider to accept (3 min timer)...", 'isUser': false});
+        _messages.insert(0, {'text': "📩 Request sent! Waiting for provider to accept...", 'isUser': false});
       });
 
-      // Start polling booking status
       _startStatusPolling();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to book: $e')));
@@ -204,21 +250,57 @@ class _ChatScreenState extends State<ChatScreen> {
             setState(() {
               _messages.insert(0, {'text': "✅ Provider accepted! You can now chat with them.", 'isUser': false});
             });
-          } else if (status == "REJECTED") {
+
+            // Schedule a reminder alarm one hour before
+            _scheduleMeetingAlarm();
+          } else if (status == "REJECTED" || status == "CANCELLED") {
             _statusPoller?.cancel();
             setState(() {
-              _messages.insert(0, {'text': "❌ Provider declined. Let me find someone else...", 'isUser': false});
+              _messages.insert(0, {'text': "❌ Provider declined or request was cancelled.", 'isUser': false});
             });
+            NotificationService().cancelForBooking(_pendingBookingId!);
           } else if (status == "COMPLETED") {
             _statusPoller?.cancel();
             setState(() {
-              _messages.insert(0, {'text': "🎉 Service marked as completed! Please rate your experience.", 'isUser': false});
+              _messages.insert(0, {'text': "🎉 Service completed! Please rate your experience.", 'isUser': false});
             });
             _showRatingDialog();
           }
         }
       } catch (_) {}
     });
+  }
+
+  // ─── Schedule Meeting Alarm ──────────────────────────────
+  void _scheduleMeetingAlarm() {
+    if (_currentParsedRequest == null || _pendingBookingId == null) return;
+    
+    // Default meeting time is today plus 2 hours
+    DateTime meetingTime = DateTime.now().add(const Duration(hours: 2));
+    
+    // Add Immediate Notification
+    NotificationService().addImmediate(
+      title: "Booking Confirmed! 🎉",
+      body: "Meeting scheduled for ${meetingTime.hour}:${meetingTime.minute.toString().padLeft(2, '0')}.",
+      bookingId: _pendingBookingId,
+      type: NotificationType.confirmed,
+    );
+
+    // Schedule 1 hour before meeting alarm notification
+    final alarmTime = meetingTime.subtract(const Duration(hours: 1));
+    NotificationService().schedule(
+      title: "⏰ Upcoming Meeting Alarm",
+      body: "Your Servista appointment starts in 1 hour.",
+      fireAt: alarmTime,
+      bookingId: _pendingBookingId,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("⏰ Alarm set for ${alarmTime.hour}:${alarmTime.minute.toString().padLeft(2, '0')} (1 hour before meeting)"),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   // ─── Cancel Booking ─────────────────────────────────────
@@ -236,6 +318,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Navigator.pop(ctx);
               try {
                 await ApiService.respondToBooking(_pendingBookingId!, "reject");
+                NotificationService().cancelForBooking(_pendingBookingId!);
                 setState(() {
                   _bookingStatus = "";
                   _pendingBookingId = null;
@@ -251,6 +334,91 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ─── Show Notifications Drawer ───────────────────────────
+  void _showNotificationsPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final notifications = NotificationService().history;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.5,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Scheduled Alarms", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      if (notifications.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              NotificationService().markAllRead();
+                            });
+                            setSheetState(() {});
+                          },
+                          child: const Text("Clear All"),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: notifications.isEmpty
+                      ? const Center(child: Text("No notification alarms scheduled yet.", style: TextStyle(color: Colors.grey)))
+                      : ListView.builder(
+                          itemCount: notifications.length,
+                          itemBuilder: (_, i) {
+                            final n = notifications[i];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: n.color.withValues(alpha: 0.1),
+                                  child: Icon(n.icon, color: n.color),
+                                ),
+                                title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(n.body),
+                                    const SizedBox(height: 4),
+                                    Text("${n.time.hour}:${n.time.minute.toString().padLeft(2, '0')}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                  ],
+                                ),
+                                trailing: n.bookingId != null && _bookingStatus == "CONFIRMED"
+                                  ? TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        _cancelBooking();
+                                      },
+                                      child: const Text("Cancel Booking", style: TextStyle(color: Colors.red)),
+                                    )
+                                  : null,
+                              ),
+                            );
+                          },
+                        ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      },
     );
   }
 
@@ -333,9 +501,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ─── Timer Expired ──────────────────────────────────────
-  // Timer expiry is handled by status polling detecting timeout state
-
   // ─── BUILD ──────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -352,15 +517,7 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Color(0xFF1a56db)),
-            onPressed: () {
-              // Show customer notifications
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_pendingBookingId != null ? "Active booking: $_bookingStatus" : "No active bookings"),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
+            onPressed: _showNotificationsPanel,
           ),
         ],
       ),
