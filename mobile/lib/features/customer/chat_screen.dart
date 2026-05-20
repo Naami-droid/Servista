@@ -262,10 +262,43 @@ class _ChatScreenState extends State<ChatScreen> {
               )
             ),
             
+          if (_messages.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Wrap(
+                spacing: 8.0,
+                children: [
+                  ActionChip(
+                    label: const Text("AC Repair"),
+                    onPressed: () {
+                      _controller.text = "AC not cooling, need repair today.";
+                      _sendMessage();
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text("Plumber"),
+                    onPressed: () {
+                      _controller.text = "Leaking pipe in bathroom.";
+                      _sendMessage();
+                    },
+                  ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
+                IconButton(
+                  icon: const Icon(Icons.mic, color: Colors.deepPurple),
+                  onPressed: () {
+                    // Simulate voice input for hackathon demo
+                    _controller.text = "Mujhe kal subah G-13 mein AC technician chahiye";
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Voice converted to text!"), duration: Duration(seconds: 1)),
+                    );
+                  },
+                ),
                 Expanded(
                   child: TextField(
                     controller: _controller,
