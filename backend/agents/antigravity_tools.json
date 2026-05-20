@@ -1,0 +1,38 @@
+[
+    {
+      "name": "parse_service_request",
+      "description": "Parse natural language input in Urdu, Roman Urdu, or English to extract structured service details."
+    },
+    {
+      "name": "find_providers",
+      "description": "Performs 6-factor match on eligible providers and returns top 5 mathematically scored providers."
+    },
+    {
+      "name": "reason_and_shortlist",
+      "description": "LLM picks the best 2 providers from the top 5 and generates customer-visible reasoning."
+    },
+    {
+      "name": "create_booking",
+      "description": "Creates a booking in the database and immediately starts the 3-minute provider response timer."
+    },
+    {
+      "name": "handle_provider_timeout",
+      "description": "Timer expired — automatically reruns the provider matching pipeline excluding the timed-out providers."
+    },
+    {
+      "name": "handle_cancellation",
+      "description": "Provider cancelled — automatically reruns the pipeline to find a replacement."
+    },
+    {
+      "name": "get_smart_suggestions",
+      "description": "Returns personalized service suggestions based on the user's booking history and seasonal trends."
+    },
+    {
+      "name": "submit_review",
+      "description": "Submits a post-job customer review and instantly recalculates the provider's overall rating."
+    },
+    {
+      "name": "generate_receipt",
+      "description": "Generates a PDF service receipt using ReportLab, uploads to Firebase, and returns the public download URL."
+    }
+  ]

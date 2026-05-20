@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic
+firebase-admin
+google-generativeai
+apscheduler
+reportlab
+geopy
+sendgrid
+python-dotenv
+openai
