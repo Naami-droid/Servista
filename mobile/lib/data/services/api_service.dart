@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Use 127.0.0.1 for Flutter Web to hit PC localhost
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  // Use Network IP so physical mobile devices can connect
+  static const String baseUrl = 'http://10.8.1.68:8000';
 
   static Future<Map<String, dynamic>> sendChatMessage(String customerId, String message, {List<Map<String, String>> history = const [], List<String> excludedProviders = const [], Map<String, dynamic>? parsedOverride}) async {
     final response = await http.post(
