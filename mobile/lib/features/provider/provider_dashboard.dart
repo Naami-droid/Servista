@@ -104,10 +104,13 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.orange,
+                                color: job['status'] == 'CONFIRMED' ? Colors.green : Colors.orange,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Text("NEW", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                job['status'] == 'CONFIRMED' ? "CONFIRMED" : "NEW", 
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)
+                              ),
                             ),
                           ],
                         ),
@@ -123,34 +126,63 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           const SizedBox(width: 4),
                           Text("${req['date']} - ${req['time_preference']}"),
                         ]),
+                        if (job['status'] == 'PENDING' && job['deadline'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: StreamBuilder(
+                              stream: Stream.periodic(const Duration(seconds: 1)),
+                              builder: (context, snapshot) {
+                                final deadline = DateTime.parse(job['deadline']).toLocal();
+                                final now = DateTime.now();
+                                final diff = deadline.difference(now);
+                                if (diff.isNegative) {
+                                  return const Text("Time expired", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold));
+                                }
+                                return Text(
+                                  "Respond within: ${diff.inMinutes}:${(diff.inSeconds % 60).toString().padLeft(2, '0')}",
+                                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                );
+                              },
+                            ),
+                          ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _respond(job['id'], "reject"),
-                                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                                child: const Text("Reject"),
+                        if (job['status'] == 'PENDING')
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _respond(job['id'], "reject"),
+                                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                  child: const Text("Reject"),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _respond(job['id'], "renegotiate"),
-                                style: OutlinedButton.styleFrom(foregroundColor: Colors.orange),
-                                child: const Text("Renegotiate"),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _respond(job['id'], "renegotiate"),
+                                  style: OutlinedButton.styleFrom(foregroundColor: Colors.orange),
+                                  child: const Text("Renegotiate"),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () => _respond(job['id'], "accept"),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                                child: const Text("Accept"),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _respond(job['id'], "accept"),
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                                  child: const Text("Accept"),
+                                ),
                               ),
+                            ],
+                          )
+                        else if (job['status'] == 'CONFIRMED')
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () => _respond(job['id'], "complete"),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                              child: const Text("Mark Service Completed"),
                             ),
-                          ],
-                        ),
+                          ),
                       ],
                     ),
                   ),

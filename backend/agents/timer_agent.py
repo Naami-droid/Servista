@@ -82,6 +82,22 @@ async def handle_provider_timeout(booking_id: str):
         "updated_at": firestore.SERVER_TIMESTAMP()
     })
 
+    # Penalize non-responsive providers
+    for provider_id in pending_providers:
+        provider_ref = db.collection("providers").document(provider_id)
+        provider_doc = provider_ref.get()
+        if provider_doc.exists:
+            data = provider_doc.to_dict()
+            new_rating = max(1.0, data.get("rating", 5.0) - 0.05)
+            # Increase cancellation risk / lower availability score proxy
+            new_cancellation_risk = min(100, data.get("cancellation_risk_score", 0) + 2)
+            
+            provider_ref.update({
+                "rating": new_rating,
+                "cancellation_risk_score": new_cancellation_risk
+            })
+            print(f"Penalized provider {provider_id} for timeout: rating={new_rating}, risk={new_cancellation_risk}")
+
     send_notification(
         title="Timeout",
         body="Providers did not respond in time. Searching for new ones..."

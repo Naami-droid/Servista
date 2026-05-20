@@ -82,6 +82,57 @@ class _ProviderTimerWidgetState extends State<ProviderTimerWidget>
     return Colors.red;
   }
 
+  void _showReviewDialog(BuildContext context) {
+    double rating = 5.0;
+    TextEditingController reviewController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Rate Your Service"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("How was your experience?"),
+              const SizedBox(height: 16),
+              // Simple rating simulation
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) => const Icon(Icons.star, color: Colors.orange)),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reviewController,
+                decoration: const InputDecoration(
+                  hintText: "Write a short review...",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await ApiService.submitReview(widget.bookingId, rating, reviewController.text);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Review submitted successfully!")));
+                }
+              },
+              child: const Text("Submit"),
+            )
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_status == "REJECTED") {
@@ -169,6 +220,30 @@ class _ProviderTimerWidgetState extends State<ProviderTimerWidget>
         ),
         child: const Center(
           child: Text("✅ Booking Confirmed! Chat with Provider", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+        )
+      );
+    } else if (_status == "COMPLETED") {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.blue),
+        ),
+        child: Column(
+          children: [
+            const Text("🎉 Service Completed!", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                // We'll show a review dialog
+                _showReviewDialog(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+              child: const Text("Write a Review"),
+            )
+          ],
         )
       );
     } else if (_secondsLeft <= 0) {

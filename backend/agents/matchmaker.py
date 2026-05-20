@@ -75,8 +75,24 @@ async def get_all_providers():
     docs = db.collection("providers").stream()
     return [doc.to_dict() for doc in docs]
 
+from geopy.geocoders import Nominatim
+import asyncio
+
 async def geocode_location(location_text: str):
-    # Dummy geocoding for hackathon
+    try:
+        # Run synchronous geocoding in a thread to not block event loop
+        loop = asyncio.get_event_loop()
+        geolocator = Nominatim(user_agent="karobar_ai")
+        # Ensure we target Pakistan for better results if user just says "G-13"
+        query = f"{location_text}, Pakistan" if "pakistan" not in location_text.lower() else location_text
+        location = await loop.run_in_executor(None, geolocator.geocode, query)
+        
+        if location:
+            return {"lat": location.latitude, "lng": location.longitude}
+    except Exception as e:
+        print(f"Geocoding failed for {location_text}: {e}")
+        
+    # Default to Islamabad center if failed
     return {"lat": 33.6844, "lng": 73.0479}
 
 async def six_factor_match(parsed_request: dict, excluded_ids: list = None, top_n: int = 5) -> dict:

@@ -90,4 +90,20 @@ class ApiService {
       throw Exception('Login failed: ${jsonDecode(response.body)['detail']}');
     }
   }
+
+  static Future<void> submitReview(String bookingId, double rating, String reviewText) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reviews/submit'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'booking_id': bookingId,
+        'customer_id': 'user_123',
+        'rating': rating,
+        'review_text': reviewText,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to submit review');
+    }
+  }
 }

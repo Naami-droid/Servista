@@ -25,19 +25,20 @@ async def create_booking(request: CreateBookingRequest):
         
     booking_ref = db.collection("bookings").document()
     
+    deadline_time = datetime.now(timezone.utc) + timedelta(minutes=3)
+    
     booking_data = {
         "customer_id": request.customer_id,
         "request_data": request.request_data,
         "offered_provider_ids": request.offered_provider_ids,
         "reasoning_data": request.reasoning_data,
         "status": "PENDING",
+        "deadline": deadline_time.isoformat(),
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
     
     booking_ref.set(booking_data)
-    
-    deadline_time = datetime.now(timezone.utc) + timedelta(minutes=3)
     
     return {
         "status": "success", 
@@ -53,11 +54,11 @@ async def get_pending_bookings(provider_id: str):
         
     if provider_id == "ALL":
         docs = db.collection("bookings")\
-                 .where("status", "==", "PENDING")\
+                 .where("status", "in", ["PENDING", "CONFIRMED"])\
                  .get()
     else:
         docs = db.collection("bookings")\
-                 .where("status", "==", "PENDING")\
+                 .where("status", "in", ["PENDING", "CONFIRMED"])\
                  .where("offered_provider_ids", "array_contains", provider_id)\
                  .get()
              
@@ -118,6 +119,13 @@ async def provider_action(payload: BookingAction):
             "updated_at": datetime.now(timezone.utc)
         })
         return {"status": "success", "message": "Booking renegotiating"}
+        
+    elif payload.action == "complete":
+        doc_ref.update({
+            "status": "COMPLETED",
+            "updated_at": datetime.now(timezone.utc)
+        })
+        return {"status": "success", "message": "Service marked as completed."}
         
     elif payload.action == "reject":
         doc_ref.update({
