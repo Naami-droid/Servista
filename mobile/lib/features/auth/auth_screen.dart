@@ -56,73 +56,111 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        title: const Text("Servista AI Service App", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.menu, color: Colors.black54), onPressed: () {}),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
-              const Icon(Icons.handyman, size: 80, color: Colors.deepPurple),
-              const SizedBox(height: 16),
-              const Text(
-                "Karobar AI",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 48),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("I am a: "),
-                  ChoiceChip(
-                    label: const Text("Customer"),
-                    selected: !_isProvider,
-                    onSelected: (val) => setState(() => _isProvider = false),
+              Container(
+                width: double.infinity,
+                height: 350,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3b82f6), Color(0xFF1d4ed8)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text("Service Provider"),
-                    selected: _isProvider,
-                    onSelected: (val) => setState(() => _isProvider = true),
-                  ),
-                ],
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Text("N", style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Color(0xFF1a56db))),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: CircleAvatar(radius: 6, backgroundColor: Colors.greenAccent),
+                          )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text("Servista", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              
+              const SizedBox(height: 32),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: "Email",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: "Password",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
                 ),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text("Login as Service Provider"),
+                value: _isProvider,
+                activeColor: const Color(0xFF1a56db),
+                onChanged: (val) {
+                  setState(() {
+                    _isProvider = val;
+                    if (val) {
+                      _emailController.text = "mrnaami2004+provider1@gmail.com";
+                    } else {
+                      _emailController.text = "mrnaami2004+customer@gmail.com";
+                    }
+                  });
+                },
               ),
               const SizedBox(height: 24),
-              
-              ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1a56db),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  ),
+                  child: _isLoading 
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("Sign In", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
-                child: _isLoading 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text("Sign In", style: TextStyle(fontSize: 16)),
               ),
-              const SizedBox(height: 40),
             ],
           ),
         ),

@@ -12,7 +12,9 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
-  final List<Map<String, dynamic>> _messages = [];
+  final List<Map<String, dynamic>> _messages = [
+    {'text': 'Salam, Ali!\nHow can I help you today?', 'isUser': false}
+  ];
   bool _isLoading = false;
 
   Map<String, dynamic>? _currentParsedRequest;
@@ -177,13 +179,24 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(children: [
-          CircleAvatar(child: Text("K", style: TextStyle(fontSize: 14)), radius: 14),
-          SizedBox(width: 8),
-          Text("Karobar AI"),
-        ]),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text("Servista", style: TextStyle(color: Color(0xFF1a56db), fontWeight: FontWeight.bold, fontSize: 24)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: const Padding(
+          padding: EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Color(0xFF1a56db)),
+            onPressed: () {},
+          ),
+        ],
       ),
+      backgroundColor: Colors.grey[50],
       body: Column(
         children: [
           if (_timerDeadline != null && _pendingBookingId != null)
@@ -216,12 +229,21 @@ class _ChatScreenState extends State<ChatScreen> {
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: EdgeInsets.only(bottom: 8, left: isUser ? 40.0 : 0.0, right: isUser ? 0.0 : 40.0),
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.deepPurple[100] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
+                      color: isUser ? const Color(0xFF1a56db) : Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(isUser ? 16 : 0),
+                        bottomRight: Radius.circular(isUser ? 0 : 16),
+                      ),
+                      boxShadow: isUser ? [] : [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
                     ),
-                    child: Text(msg['text'] as String),
+                    child: Text(
+                      msg['text'] as String,
+                      style: TextStyle(color: isUser ? Colors.white : Colors.black87),
+                    ),
                   ),
                 );
               },
@@ -231,38 +253,77 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_isLoading) const Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()),
           
           if (_pendingProviders != null)
-            SizedBox(
-              height: 145,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _pendingProviders!.length,
-                itemBuilder: (ctx, i) {
-                   final p = _pendingProviders![i]['provider_info'];
-                   return Card(
-                     margin: const EdgeInsets.all(8),
-                     child: Container(
-                       padding: const EdgeInsets.all(8),
-                       width: 200,
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(p['full_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                           Text("${p['rating']} ⭐ | PKR ${p['base_rate']}"),
-                            Text("${_pendingProviders![i]['distance_km']} km away", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                           const Spacer(),
-                           ElevatedButton(
-                             onPressed: () => _selectProvider(p['uid']),
-                             child: const Text('Select Provider'),
-                           )
-                         ]
-                       )
-                     )
-                   );
-                }
-              )
+            Container(
+              height: 250,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+              ),
+              child: Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("Recommended Providers", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1a56db))),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _pendingProviders!.length,
+                      itemBuilder: (ctx, i) {
+                        final p = _pendingProviders![i]['provider_info'];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=${p['uid']}'),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(p['full_name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.star, color: Colors.orange, size: 16),
+                                        Text(" ${p['rating']}  ·  Rs. ${p['base_rate']}/hr", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                                      ],
+                                    ),
+                                    Text("🕒 ${_pendingProviders![i]['distance_km']} km away", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => _selectProvider(p['uid']),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1a56db),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                ),
+                                child: const Text('Book Now'),
+                              )
+                            ],
+                          ),
+                        );
+                      }
+                    ),
+                  ),
+                ],
+              ),
             ),
             
-          if (_messages.isEmpty)
+          if (_messages.length == 1)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Wrap(

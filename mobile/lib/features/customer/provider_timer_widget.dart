@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../data/services/api_service.dart';
+import '../shared/live_chat_screen.dart';
 
 class ProviderTimerWidget extends StatefulWidget {
   final DateTime deadline;
@@ -218,8 +219,25 @@ class _ProviderTimerWidgetState extends State<ProviderTimerWidget>
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.green),
         ),
-        child: const Center(
-          child: Text("✅ Booking Confirmed! Chat with Provider", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+        child: Column(
+          children: [
+            const Text("✅ Booking Confirmed!", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => LiveChatScreen(
+                    bookingId: widget.bookingId,
+                    userId: "customer_123", // Dummy ID since we don't track state
+                    userRole: "customer",
+                  )
+                ));
+              },
+              icon: const Icon(Icons.chat),
+              label: const Text("Open Live Chat"),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            )
+          ],
         )
       );
     } else if (_status == "COMPLETED") {

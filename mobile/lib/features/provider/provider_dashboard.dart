@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../data/services/api_service.dart';
+import '../shared/live_chat_screen.dart';
 
 class ProviderDashboard extends StatefulWidget {
   final String providerId;
@@ -64,25 +65,79 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Provider Dashboard"),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+        title: const Text("Servista", style: TextStyle(color: Color(0xFF1a56db), fontWeight: FontWeight.bold, fontSize: 24)),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: const Padding(
+          padding: EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=12'),
+          ),
+        ),
+        actions: [
+          Row(
+            children: [
+              const Text("Active for Jobs", style: TextStyle(color: Colors.black87, fontSize: 12)),
+              Switch(value: true, onChanged: (v){}, activeColor: const Color(0xFF1a56db)),
+            ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Color(0xFF1a56db)),
+            onPressed: () {},
+          ),
+        ],
       ),
+      backgroundColor: Colors.grey[50],
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
-        : _pendingJobs.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
-                  SizedBox(height: 16),
-                  Text("You're all caught up!", style: TextStyle(fontSize: 20, color: Colors.grey)),
-                  Text("Waiting for new service requests...", style: TextStyle(color: Colors.grey)),
-                ],
+        : Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1a56db),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Column(
+                  children: [
+                    Text("PROVIDER STATUS", style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                    SizedBox(height: 8),
+                    Text("Active & Ready", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: null,
+                        child: Text("Go Offline", style: TextStyle(color: Color(0xFF1a56db))),
+                      ),
+                    )
+                  ],
+                ),
               ),
-            )
-          : ListView.builder(
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildStatCard(Icons.star_border, "4.9", "Rating", Colors.green),
+                    _buildStatCard(Icons.work_outline, "124", "Jobs", const Color(0xFF1a56db)),
+                    _buildStatCard(Icons.verified_outlined, "98%", "Reliability", Colors.deepOrange),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Recent Requests", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              Expanded(
+                child: _pendingJobs.isEmpty
+                  ? const Center(child: Text("Waiting for new service requests...", style: TextStyle(color: Colors.grey)))
+                  : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _pendingJobs.length,
               itemBuilder: (ctx, i) {
@@ -175,13 +230,35 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                             ],
                           )
                         else if (job['status'] == 'CONFIRMED')
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () => _respond(job['id'], "complete"),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                              child: const Text("Mark Service Completed"),
-                            ),
+                          Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => LiveChatScreen(
+                                        bookingId: job['id'],
+                                        userId: widget.providerId,
+                                        userRole: "provider",
+                                      )
+                                    ));
+                                  },
+                                  icon: const Icon(Icons.chat),
+                                  label: const Text("Open Live Chat"),
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => _respond(job['id'], "complete"),
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                                  child: const Text("Mark Service Completed"),
+                                ),
+                              ),
+                            ],
                           ),
                       ],
                     ),
@@ -189,6 +266,30 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 );
               },
             ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildStatCard(IconData icon, String value, String label, Color iconColor) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        ],
+      ),
     );
   }
 }

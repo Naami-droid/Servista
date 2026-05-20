@@ -106,4 +106,23 @@ class ApiService {
       throw Exception('Failed to submit review');
     }
   }
+  static Future<List<dynamic>> getMessages(String bookingId) async {
+    final response = await http.get(Uri.parse('$baseUrl/chat/$bookingId/messages'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['messages'];
+    }
+    return [];
+  }
+
+  static Future<void> sendMessage(String bookingId, String senderId, String senderRole, String text) async {
+    await http.post(
+      Uri.parse('$baseUrl/chat/$bookingId/send'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'sender_id': senderId,
+        'sender_role': senderRole,
+        'text': text,
+      }),
+    );
+  }
 }

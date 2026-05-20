@@ -13,6 +13,10 @@ You MUST combine information from the ENTIRE history with the current message.
 For example, if the history mentions "AC repair" and the current message says "G-13 at 10am", your JSON must contain BOTH the service type and the location/time.
 Do NOT ask for information that the user has already provided in the history.
 
+IMPORTANT TRANSLATION RULES:
+If the user speaks in Urdu or Roman Urdu (e.g. "Mujhe kal subah G-13 mein AC technician chahiye"), you must TRANSLATE the intent into English for the JSON.
+Service Types must map to one of: "AC Technician", "Tuition Teacher", "Plumber", "Electrician".
+
 Output format:
 {
   "service_type": "string",
