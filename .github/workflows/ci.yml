@@ -1,0 +1,47 @@
+name: Servista Flutter CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+        working-directory: mobile
+
+      - name: Verify Code Formatting
+        run: flutter format --set-exit-if-changed .
+        working-directory: mobile
+        continue-on-error: true
+
+      - name: Run Static Analysis
+        run: flutter analyze
+        working-directory: mobile
+
+      - name: Run Unit & UI Tests
+        run: flutter test
+        working-directory: mobile
+
+      - name: Build Web App (PWA)
+        run: flutter build web --release
+        working-directory: mobile

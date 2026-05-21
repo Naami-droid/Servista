@@ -1,0 +1,13 @@
+[build]
+  command = "cd mobile && flutter pub get && flutter build web --release"
+  publish = "mobile/build/web"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

@@ -2,10 +2,23 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from core.config import settings
 
+import os
+import tempfile
+
 def init_firebase():
     if not firebase_admin._apps:
         try:
-            # Use Application Default Credentials (ADC) since you installed Google Cloud CLI
+            # If GCP_ADC_JSON env var is set (for Railway/cloud deployments), write to a temp file
+            # and set GOOGLE_APPLICATION_CREDENTIALS so ApplicationDefault() can pick it up.
+            adc_json = os.getenv("GCP_ADC_JSON")
+            if adc_json:
+                fd, path = tempfile.mkstemp(suffix=".json")
+                with os.fdopen(fd, 'w') as f:
+                    f.write(adc_json)
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path
+                print(f"Set GOOGLE_APPLICATION_CREDENTIALS to temp file: {path}")
+
+            # Use Application Default Credentials (ADC)
             cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred, {
                 'projectId': 'kaarobar-ai', # Your explicit project ID

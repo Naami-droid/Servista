@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/services/api_service.dart';
 import '../customer/chat_screen.dart';
 import '../provider/provider_dashboard.dart';
@@ -16,14 +17,42 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isProvider = false;
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUrl = prefs.getString('api_base_url');
+      if (savedUrl != null && savedUrl.isNotEmpty) {
+        if (savedUrl.contains('10.8.1.68') || savedUrl.contains('localhost') || savedUrl.contains('127.0.0.1')) {
+          // Reset to production URL
+          await prefs.setString('api_base_url', ApiService.baseUrl);
+        } else {
+          ApiService.baseUrl = savedUrl;
+        }
+      }
+    } catch (e) {
+      print("Failed to load settings: $e");
+    }
+  }
+
   void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     if (email.isEmpty || password.isEmpty) return;
+    final url = ApiService.baseUrl;
 
     setState(() => _isLoading = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('api_base_url', url);
+      ApiService.baseUrl = url;
+
       final role = _isProvider ? "provider" : "customer";
       await ApiService.login(email, password, role);
       
@@ -40,7 +69,6 @@ class _AuthScreenState extends State<AuthScreen> {
           MaterialPageRoute(builder: (_) => const ChatScreen()),
         );
       }
-
 
     } catch (e) {
       if (mounted) {
@@ -72,7 +100,7 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               Container(
                 width: double.infinity,
-                height: 350,
+                height: 250,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF3b82f6), Color(0xFF1d4ed8)],
@@ -109,24 +137,47 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+
               TextField(
                 controller: _emailController,
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
                 decoration: InputDecoration(
                   labelText: "Email",
+                  labelStyle: const TextStyle(color: Colors.black54),
+                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF1a56db)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFDDE3EE)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF1a56db), width: 2),
+                  ),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
+                  fillColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
                 obscureText: true,
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
                 decoration: InputDecoration(
                   labelText: "Password",
+                  labelStyle: const TextStyle(color: Colors.black54),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF1a56db)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFDDE3EE)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF1a56db), width: 2),
+                  ),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
+                  fillColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 16),

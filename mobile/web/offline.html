@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Servista</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a56db;
+      --primary-dark: #1e40af;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+      padding: 20px;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: 24px;
+      padding: 40px 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid rgba(0, 0, 0, 0.03);
+    }
+    
+    .icon-container {
+      width: 80px;
+      height: 80px;
+      background-color: rgba(26, 86, 219, 0.08);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 24px;
+    }
+    
+    .icon {
+      color: var(--primary);
+      width: 40px;
+      height: 40px;
+    }
+    
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      margin: 0 0 12px;
+      color: var(--text);
+    }
+    
+    p {
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin: 0 0 32px;
+    }
+    
+    .btn {
+      display: inline-block;
+      width: 100%;
+      background-color: var(--primary);
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(26, 86, 219, 0.2);
+      transition: background-color 0.2s, transform 0.1s;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    
+    .btn:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .btn:active {
+      transform: scale(0.98);
+    }
+    
+    .support-info {
+      margin-top: 32px;
+      font-size: 14px;
+      color: var(--text-muted);
+      border-top: 1px solid #f1f5f9;
+      padding-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-container">
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-3.536 4.978 4.978 0 011.414-3.536m0 0L4.829 7.464m1.414 7.072L3 18M12 11a1 1 0 100-2 1 1 0 000 2z"></path>
+      </svg>
+    </div>
+    <h1>You're Offline</h1>
+    <p>Please check your internet connection. Servista requires an active network to parse AI requests and match service providers.</p>
+    <button class="btn" onclick="window.location.reload()">Retry Connection</button>
+    <div class="support-info">
+      Servista AI Assistant &copy; 2026
+    </div>
+  </div>
+</body>
+</html>

@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
+import '../shared/web_utils.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/notification_service.dart';
 import '../shared/live_chat_screen.dart';
+import '../shared/share_modal.dart';
+import '../shared/install_banner.dart';
+import '../../data/services/theme_manager.dart';
 
 class ProviderDashboard extends StatefulWidget {
   final String providerId;
@@ -26,11 +32,17 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     NotificationService().init();
     // Poll every 5 seconds for incoming jobs
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchJobs());
+    if (kIsWeb) {
+      requestWakeLock();
+    }
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    if (kIsWeb) {
+      releaseWakeLock();
+    }
     super.dispose();
   }
 
@@ -49,6 +61,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   }
 
   Future<void> _respond(String bookingId, String action) async {
+    HapticFeedback.lightImpact();
     try {
       final success = await ApiService.respondToBooking(bookingId, action);
       if (success) {
@@ -93,6 +106,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   }
 
   void _showNotifications() {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -177,6 +191,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   }
 
   void _confirmCancel(String bookingId) {
+    HapticFeedback.heavyImpact();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -216,13 +231,34 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
         actions: [
           Row(
             children: [
-              const Text("Active", style: TextStyle(color: Colors.black87, fontSize: 12)),
+              Text("Active", style: TextStyle(color: ThemeManager().isDark ? Colors.white70 : Colors.black87, fontSize: 12)),
               Switch(
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
                 activeTrackColor: const Color(0xFF1a56db),
               ),
             ],
+          ),
+          IconButton(
+            icon: Icon(
+              ThemeManager().isDark ? Icons.light_mode : Icons.dark_mode,
+              color: const Color(0xFF1a56db),
+            ),
+            tooltip: "Toggle Theme",
+            onPressed: () async {
+              await ThemeManager().toggleTheme();
+              setState(() {});
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined, color: Color(0xFF1a56db)),
+            tooltip: "Share App",
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => const ShareModal(),
+              );
+            },
           ),
           Stack(
             children: [
@@ -244,8 +280,9 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
         ],
       ),
       backgroundColor: Colors.grey[50],
-      body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
+      body: SafeArea(
+        child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
             onRefresh: _fetchJobs,
             child: SingleChildScrollView(
@@ -275,7 +312,10 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () => setState(() => _isActive = !_isActive),
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              setState(() => _isActive = !_isActive);
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: _isActive ? const Color(0xFF1a56db) : Colors.grey.shade700,
@@ -510,6 +550,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
               ),
             ),
           ),
+      ),
+      bottomNavigationBar: const InstallBanner(),
     );
   }
 
